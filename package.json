@@ -1,0 +1,12 @@
+{
+  "name": "jarvis",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @jarvis/web dev",
+    "build": "pnpm --filter @jarvis/web build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
