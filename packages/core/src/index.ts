@@ -7,3 +7,4 @@ export * from "./gateway";
 export * from "./briefing";
 export * from "./methods";
 export * from "./ical";
+export * from "./notify";

@@ -1,11 +1,13 @@
 "use client";
 
-import { AlertTriangle, Bell, Link2, Lock, RotateCcw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Bell, Cloud, Link2, Lock, LogOut, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACTION_POLICY } from "@jarvis/core";
 import { useStore } from "@/lib/store";
 import { Button, Card, Label, Pill } from "@/components/ui";
 import { Skeleton } from "@/components/Skeleton";
+import { signOut } from "@/lib/sync";
+import { ago } from "@/lib/format";
 
 const INTEGRATIONS = [
   { id: "google", name: "Google Calendar", detail: "Calendario «JARVIS» propio + lectura de tu agenda personal", status: "pendiente" },
@@ -67,6 +69,31 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+      </Card>
+
+      <Card>
+        <Label right={<Cloud className="size-4 text-faint" />}>Cuenta y nube</Label>
+        {store.sync.mode === "cloud" ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-[13.5px] text-ink">{store.sync.email}</p>
+              <p className="text-[12px] text-muted">
+                {store.sync.status === "error"
+                  ? "No se ha podido sincronizar. Se reintenta solo; tus cambios siguen guardados en este dispositivo."
+                  : store.sync.status === "syncing"
+                    ? "Sincronizando…"
+                    : store.sync.at
+                      ? `Sincronizado ${ago(store.sync.at, store.now)}. El iPhone y el ordenador ven el mismo plan.`
+                      : "Conectado."}
+              </p>
+            </div>
+            <Button onClick={() => void signOut()}>
+              <LogOut className="size-4" /> Cerrar sesión
+            </Button>
+          </div>
+        ) : (
+          <p className="text-[13px] leading-relaxed text-muted">Modo local: los datos se guardan solo en este dispositivo.</p>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -175,7 +202,7 @@ export default function SettingsPage() {
         </div>
         <div className="mt-5 flex items-center justify-between border-t hairline pt-4">
           <p className="text-[12px] text-faint">Volver a los datos de ejemplo originales</p>
-          <Button onClick={store.reset}>
+          <Button onClick={() => confirm("Esto borra tus datos de JARVIS y vuelve a los de ejemplo. ¿Seguro?") && store.reset()}>
             <RotateCcw className="size-4" /> Reiniciar demo
           </Button>
         </div>

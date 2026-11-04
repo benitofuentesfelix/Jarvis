@@ -41,6 +41,15 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const working = !!store?.working;
 
+  if (path === "/entrar") {
+    return (
+      <>
+        <div className="ambient" aria-hidden />
+        {children}
+      </>
+    );
+  }
+
   return (
     <FocusProvider>
       <div className="ambient" aria-hidden />

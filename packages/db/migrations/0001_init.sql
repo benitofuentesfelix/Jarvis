@@ -5,16 +5,16 @@
 
 -- Helper: standard owner policy for a table with a user_id column.
 create or replace function public.jarvis_owner_policies(tbl regclass) returns void
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   execute format('alter table %s enable row level security', tbl);
-  execute format('create policy "owner_select" on %s for select using (user_id = auth.uid())', tbl);
-  execute format('create policy "owner_insert" on %s for insert with check (user_id = auth.uid())', tbl);
-  execute format('create policy "owner_update" on %s for update using (user_id = auth.uid())', tbl);
-  execute format('create policy "owner_delete" on %s for delete using (user_id = auth.uid())', tbl);
+  execute format('create policy "owner_select" on %s for select to authenticated using (user_id = (select auth.uid()))', tbl);
+  execute format('create policy "owner_insert" on %s for insert to authenticated with check (user_id = (select auth.uid()))', tbl);
+  execute format('create policy "owner_update" on %s for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', tbl);
+  execute format('create policy "owner_delete" on %s for delete to authenticated using (user_id = (select auth.uid()))', tbl);
 end $$;
 
-create or replace function public.touch_updated_at() returns trigger language plpgsql as $$
+create or replace function public.touch_updated_at() returns trigger language plpgsql set search_path = '' as $$
 begin new.updated_at = now(); return new; end $$;
 
 -- ───────────── Goals hierarchy ─────────────

@@ -30,6 +30,8 @@ import {
   subjects,
   type MemoryItem,
 } from "./demo";
+import { useCloudSync, type SyncState } from "./sync";
+import { applyEvagd, newId, planFor, type EvagdResult } from "./engine";
 
 export type { Outcome };
 
@@ -48,7 +50,7 @@ export interface Feedback {
   quality?: number;
 }
 
-interface Persisted {
+export interface Persisted {
   v: 2;
   items: AcademicItem[];
   topics: Topic[];
@@ -67,7 +69,6 @@ interface Persisted {
 }
 
 const KEY = "jarvis.v2";
-const DEMO_IDS = new Set(demoItems(new Date()).map((i) => i.id));
 
 function seed(now: Date): Persisted {
   const ago = (m: number) => new Date(now.getTime() - m * MINUTE).toISOString();
@@ -107,10 +108,6 @@ function load(now: Date): Persisted {
   return seed(now);
 }
 
-function newId(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
-}
-
 function useNow(tickMs = 30_000) {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -135,6 +132,8 @@ export interface Store {
   /** True once a real account (EVAGD for now) is feeding the plan. */
   live: boolean;
   busyFor: (days: number) => BusyEvent[];
+  /** Where the state lives: this device only, or mirrored to the cloud. */
+  sync: SyncState;
   addItem: (item: Omit<AcademicItem, "id" | "createdAt" | "doneMinutes" | "completed" | "source"> & { source?: AcademicItem["source"] }) => PlanChange[];
   completeItem: (id: string) => void;
   recordOutcome: (block: StudyBlock, outcome: Outcome, quality?: number) => void;
@@ -159,6 +158,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Persisted | null>(null);
   const [lastChanges, setLastChanges] = useState<PlanChange[]>([]);
   const [working, setWorking] = useState<string | null>(null);
+  const sync = useCloudSync(data, setData);
 
   useEffect(() => {
     if (now && !data) setData(load(now));
@@ -175,19 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const minuteKey = now ? Math.floor(now.getTime() / MINUTE) : 0;
 
-  const computePlan = useCallback((d: Persisted, at: Date) => {
-    return buildPlan({
-      now: at,
-      subjects,
-      topics: d.topics,
-      items: d.items,
-      busy: [...demoBusy(at, 14, !!d.live), ...d.skips],
-      settings: d.settings,
-      pace: paceFromOutcomes(
-        Object.values(d.feedback).flatMap((f) => (f.subjectId ? [{ subjectId: f.subjectId, outcome: f.outcome, at: f.at }] : [])),
-      ),
-    });
-  }, []);
+  const computePlan = useCallback((d: Persisted, at: Date) => planFor(d, at), []);
 
   const plan = useMemo(() => {
     if (!data || !now) return null;
@@ -255,34 +243,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const run = async () => {
       try {
         const res = await fetch("/api/evagd", { cache: "no-store" });
-        const body = (await res.json()) as { configured: boolean; ok?: boolean; error?: string; syncedAt?: string; items?: AcademicItem[] };
+        const body = (await res.json()) as EvagdResult;
         if (stop || !body.configured) return;
-        setData((d) => {
-          if (!d) return d;
-          if (!body.ok || !body.items) return { ...d, live: { ...d.live, evagd: { syncedAt: d.live?.evagd?.syncedAt ?? "", count: d.live?.evagd?.count ?? 0, error: body.error } } };
-          const first = !d.live;
-          // First real sync: the example items and topics go away for good.
-          const base = first ? d.items.filter((i) => i.source === "manual" && !DEMO_IDS.has(i.id)) : d.items;
-          const before = new Set(base.map((i) => i.id));
-          const items = mergeSynced(base, body.items, "evagd");
-          const fresh = items.filter((i) => !before.has(i.id) && i.kind !== "aviso");
-          const at = body.syncedAt ?? new Date().toISOString();
-          const notes: Activity[] = fresh.slice(0, 5).map((i) => ({
-            id: newId("act"),
-            at,
-            agent: "Classifier",
-            text: `${first ? "Importado" : "Nuevo"} de EVAGD: «${i.title}» · ${subjects.find((s) => s.id === i.subjectId)?.name ?? "sin asignatura"}`,
-          }));
-          if (first) notes.unshift({ id: newId("act"), at, agent: "Core", text: `Conectado a EVAGD: ${body.items.length} eventos leídos` });
-          return {
-            ...d,
-            items,
-            topics: first ? [] : d.topics,
-            memories: first ? d.memories.filter((m) => !m.id.startsWith("mem-")) : d.memories,
-            activity: first ? notes : [...notes, ...d.activity].slice(0, 60),
-            live: { ...d.live, evagd: { syncedAt: at, count: body.items.length } },
-          };
-        });
+        setData((d) => (d ? applyEvagd(d, body) : d));
       } catch {
         /* offline: try again next round */
       }
@@ -311,6 +274,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       working,
       live: !!data.live,
       busyFor: (days) => [...demoBusy(now, days, !!data.live), ...data.skips],
+      sync,
       setWorking,
       log,
       addItem: (item) =>
@@ -396,7 +360,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setLastChanges([]);
       },
     };
-  }, [data, now, plan, todayBlocks, lastChanges, working, mutate, log]);
+  }, [data, now, plan, todayBlocks, lastChanges, working, mutate, log, sync]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }
