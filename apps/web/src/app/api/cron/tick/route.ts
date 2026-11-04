@@ -15,12 +15,19 @@ const EVAGD_EVERY = 30 * 60_000;
 const BACKUP_EVERY = 7 * 86_400_000;
 const BACKUPS_KEPT = 8;
 
-function authorized(req: Request) {
+/** The caller must present the token that only the database scheduler knows. */
+async function authorized(req: Request, db: NonNullable<ReturnType<typeof supabaseAdmin>>) {
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!token) return false;
   const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const got = Buffer.from(req.headers.get("authorization") ?? "");
-  const want = Buffer.from(`Bearer ${secret}`);
-  return got.length === want.length && timingSafeEqual(got, want);
+  if (secret) {
+    const got = Buffer.from(token);
+    const want = Buffer.from(secret);
+    if (got.length === want.length && timingSafeEqual(got, want)) return true;
+  }
+  const { data } = await db.rpc("jarvis_cron_token_ok", { t: token });
+  return data === true;
 }
 
 /**
@@ -29,9 +36,9 @@ function authorized(req: Request) {
  * It only reads external sources; it never writes to EVAGD, Notion or personal calendars.
  */
 export async function POST(req: Request) {
-  if (!authorized(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const db = supabaseAdmin();
   if (!db) return Response.json({ error: "supabase_not_configured" }, { status: 503 });
+  if (!(await authorized(req, db))) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const now = new Date();
   const startedAt = now.toISOString();

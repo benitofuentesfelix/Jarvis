@@ -39,9 +39,10 @@
 - **Supabase** (plan gratis, región eu-west-1): proyecto `jarvis` creado. Migraciones en `packages/db/migrations`: 0001 (esquema con RLS solo para usuarios autenticados), 0002 (estado de la app, copias, lista de correos permitidos, aviso único), 0003 (pg_cron cada 5 min). Pendiente de aplicar: Supabase pide confirmación al usuario.
 - **Acceso privado**: `/entrar` con código de un solo uso por correo (sin contraseñas). El middleware exige sesión en todas las páginas y en la API. Solo pueden crear cuenta los correos de `allowed_emails` (se rellena desde el panel, nunca desde el código). Sin variables de Supabase la app sigue en modo local.
 - **Sincronización**: el estado se guarda primero en el dispositivo y se refleja en `app_state`; gana el cambio más reciente. Se vuelve a leer al abrir la app y cada 5 min.
-- **Trabajo 24/7** (`/api/cron/tick`, protegido con `CRON_SECRET`): lee EVAGD cada 30 min, avisa 15 min antes de cada sesión, resumen al acabar las horas de silencio, máximo diario y horas de silencio respetados (`packages/core/src/notify.ts`, con pruebas), copia semanal (se guardan 8).
-- **GitHub**: repositorio `benitofuentesfelix/Jarvis` vacío; falta instalar la app de Claude para poder subir.
-- **Pendiente**: aplicar migraciones, subir a GitHub, proyecto en Vercel con las variables, plantilla del correo de Supabase con el código (`{{ .Token }}`), programar pg_cron con la URL final.
+- **Trabajo 24/7** (`/api/cron/tick`, protegido con un token que genera Postgres y nunca sale de la base de datos; el servidor lo comprueba con `jarvis_cron_token_ok()`): lee EVAGD cada 30 min, avisa 15 min antes de cada sesión, resumen al acabar las horas de silencio, máximo diario y horas de silencio respetados (`packages/core/src/notify.ts`, con pruebas), copia semanal (se guardan 8).
+- **GitHub**: código en `benitofuentesfelix/Jarvis` (rama `main`).
+- **Vercel** (Hobby, región dub1): proyecto `jarvis`, producción en https://jarvis-sandy-eight-87.vercel.app. Variables públicas y de avisos puestas; `SUPABASE_SECRET_KEY` y `EVAGD_ICAL_URL` las añade el usuario en el panel.
+- **Pendiente (usuario)**: pegar `supabase-tablas.sql` en el editor SQL (la confirmación de la herramienta de migraciones no le llega), Site URL y Redirect URL en Supabase Auth, `{{ .Token }}` en las plantillas de correo, las dos variables privadas en Vercel.
 
 ## Lo que todavía no existe
 
