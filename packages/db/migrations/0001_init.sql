@@ -356,7 +356,7 @@ begin
   foreach t in array array[
     'goals','projects','milestones','metrics','metric_values','subjects','topics','source_records',
     'academic_items','academic_item_topics','grades','planner_settings','plans','study_sessions','plan_changes',
-    'findings','memories','decisions','actions','integrations','integration_secrets','push_subscriptions',
+    'findings','memories','decisions','actions','integrations','push_subscriptions',
     'notifications','job_runs'
   ] loop
     perform public.jarvis_owner_policies(t::regclass);
@@ -370,5 +370,8 @@ begin
   end loop;
 end $$;
 
--- Secrets are never readable from the browser, even by their owner.
-drop policy "owner_select" on integration_secrets;
+-- Secrets are never readable from the browser, even by their owner: no select policy.
+alter table integration_secrets enable row level security;
+create policy "owner_insert" on integration_secrets for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "owner_update" on integration_secrets for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "owner_delete" on integration_secrets for delete to authenticated using (user_id = (select auth.uid()));
