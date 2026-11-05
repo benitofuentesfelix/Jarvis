@@ -85,7 +85,7 @@ const SUBJECT_HINTS: Record<string, RegExp> = {
   eco: /econom/,
   len: /lengua|literatura|\blcl\b/,
   fil: /filosof/,
-  ing: /ingles|english|\bing\b|primera lengua extranjera/,
+  ing: /ingles|english|\bing\b|primera lengua extranjera|\bgrammar\b|\bvocabulary\b/,
 };
 
 export function guessSubject(text: string, subjects: Subject[]): string | undefined {
@@ -97,16 +97,38 @@ export function guessSubject(text: string, subjects: Subject[]): string | undefi
   return undefined;
 }
 
-export function classify(summary: string): ItemKind {
-  const t = norm(summary);
-  if (/\b(examen|prueba escrita|prueba objetiva|control|parcial|recuperacion|evaluacion)\b/.test(t)) return "examen";
-  if (/tarea|entrega|vence|fecha de entrega|cierra|actividad|trabajo|cuestionario|proyecto|practica/.test(t)) return "tarea";
-  return "aviso";
+/** Moodle opens an activity: informative, not a deadline. */
+const OPENS = /^(se abre|abre|apertura de|opens)\b/;
+/** Paperwork: needs doing, but it is a few minutes, not study. */
+const ADMIN = /\b(ficha|formulario|encuesta|autorizacion|consentimiento|inscripcion|matricula|datos personales)\b/;
+/** Online quizzes that close on a date: a deadline with some revision, not a sit-down exam. */
+const QUIZ = /\b(cuestionario|test|quiz|kahoot)\b/;
+const EXAM = /\b(examen|examenes|prueba escrita|prueba objetiva|control|parcial|recuperacion|exam)\b/;
+const TASK = /\b(vencimiento|tarea|entrega|vence|cierra|cierre|actividad|trabajo|proyecto|practica|due|closes)\b/;
+
+/**
+ * Kind and default effort of a Moodle event, from its title alone.
+ * "Evaluación" on its own is not an exam: Moodle uses it in course and form names
+ * ("1.ª evaluación"), so it would turn paperwork into fake exam prep.
+ */
+export function classifyEvent(summary: string): { kind: ItemKind; effortMinutes: number } {
+  const t = norm(summary).trim();
+  if (OPENS.test(t)) return { kind: "aviso", effortMinutes: 0 };
+  if (ADMIN.test(t)) return { kind: "tarea", effortMinutes: 15 };
+  if (EXAM.test(t)) return { kind: "examen", effortMinutes: DEFAULT_EFFORT.examen };
+  if (QUIZ.test(t)) return { kind: "tarea", effortMinutes: 60 };
+  if (TASK.test(t)) return { kind: "tarea", effortMinutes: DEFAULT_EFFORT.tarea };
+  return { kind: "aviso", effortMinutes: 0 };
 }
 
-/** Strips Moodle's suffixes ("está en fecha de entrega", "vence", "cierra") to keep the real title. */
+export function classify(summary: string): ItemKind {
+  return classifyEvent(summary).kind;
+}
+
+/** Strips Moodle's wording ("Vencimiento de", "Se cierra", "vence", "cierra"…) to keep the real title. */
 export function cleanTitle(summary: string): string {
   return summary
+    .replace(/^\s*(vencimiento de|fecha de entrega de|se cierra|cierre de|cierra)\s*:?\s*/i, "")
     .replace(/\s*(está en fecha de entrega|esta en fecha de entrega|vence|cierra|se cierra|debe completarse|is due|closes)\s*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -123,15 +145,15 @@ export function itemsFromIcs(events: IcsEvent[], subjects: Subject[], now: Date)
   for (const ev of events) {
     if (ev.start.getTime() < now.getTime() - 86_400_000) continue;
     const subjectId = guessSubject(`${ev.categories.join(" ")} ${ev.summary} ${ev.description}`, subjects);
-    let kind = classify(ev.summary);
-    if (!subjectId && kind !== "aviso") kind = "aviso";
+    let { kind, effortMinutes } = classifyEvent(ev.summary);
+    if (!subjectId && kind !== "aviso") ({ kind, effortMinutes } = { kind: "aviso", effortMinutes: 0 });
     out.push({
       id: `evagd:${ev.uid}`,
       kind,
       subjectId: subjectId ?? "otra",
       title: cleanTitle(ev.summary) || "Evento de EVAGD",
       due: ev.start.toISOString(),
-      effortMinutes: DEFAULT_EFFORT[kind],
+      effortMinutes,
       doneMinutes: 0,
       topicIds: [],
       source: "evagd",
@@ -150,7 +172,11 @@ export function mergeSynced(current: AcademicItem[], synced: AcademicItem[], sou
   const prev = new Map(current.map((i) => [i.id, i]));
   const merged = synced.map((s) => {
     const p = prev.get(s.id);
-    return p ? { ...s, doneMinutes: p.doneMinutes, completed: p.completed, effortMinutes: p.effortMinutes, topicIds: p.topicIds, createdAt: p.createdAt } : s;
+    if (!p) return s;
+    // A better classification (aviso → tarea, examen → trámite) brings its own effort;
+    // otherwise keep the effort the student may have corrected.
+    const effortMinutes = p.kind === s.kind ? p.effortMinutes : s.effortMinutes;
+    return { ...s, doneMinutes: p.doneMinutes, completed: p.completed, effortMinutes, topicIds: p.topicIds, createdAt: p.createdAt };
   });
   const ids = new Set(synced.map((s) => s.id));
   return [...current.filter((i) => i.source !== source || ids.has(i.id)).filter((i) => !ids.has(i.id)), ...merged];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classify, cleanTitle, itemsFromIcs, mergeSynced, parseIcs, zoned, type Subject } from "../src";
+import { classify, classifyEvent, cleanTitle, itemsFromIcs, mergeSynced, parseIcs, zoned, type Subject } from "../src";
 
 const TZ = "Atlantic/Canary";
 const now = zoned(2026, 11, 4, 12, 0, TZ);
@@ -93,5 +93,30 @@ describe("EVAGD calendar", () => {
     expect(cleanTitle("Informe final cierra")).toBe("Informe final");
     expect(classify("Prueba escrita UD2")).toBe("examen");
     expect(classify("Cuestionario tema 1 cierra")).toBe("tarea");
+  });
+  it("classifies real EVAGD wording without inventing exams", () => {
+    expect(classifyEvent("Vencimiento de CUMPLIMENTA TU FICHA PERSONAL - 1ª EVALUACIÓN")).toEqual({ kind: "tarea", effortMinutes: 15 });
+    expect(classifyEvent("Vencimiento de Vídeo dramatización escena Tal vez soñar")).toEqual({ kind: "tarea", effortMinutes: 100 });
+    expect(classifyEvent("Se cierra FIRST UNIT GRAMMAR AND VOCABULARY TEST 26-27")).toEqual({ kind: "tarea", effortMinutes: 60 });
+    expect(classify("Se abre FIRST UNIT GRAMMAR AND VOCABULARY TEST 26-27")).toBe("aviso");
+    expect(classify("Resultados de la 1ª evaluación")).toBe("aviso");
+    expect(classify("Examen de la 1ª evaluación")).toBe("examen");
+    expect(cleanTitle("Vencimiento de Vídeo dramatización escena Tal vez soñar")).toBe("Vídeo dramatización escena Tal vez soñar");
+    expect(cleanTitle("Se cierra FIRST UNIT TEST")).toBe("FIRST UNIT TEST");
+  });
+
+  it("re-sync applies a corrected kind with its own effort, but keeps edits otherwise", () => {
+    const base = { doneMinutes: 0, topicIds: [], source: "evagd" as const, createdAt: "2026-11-01T00:00:00Z", completed: false, subjectId: "fyq", due: "2026-11-18T22:59:00Z", title: "Ficha" };
+    const old = [
+      { ...base, id: "evagd:a", kind: "examen" as const, effortMinutes: 250 },
+      { ...base, id: "evagd:b", kind: "tarea" as const, effortMinutes: 40 },
+    ];
+    const fresh = [
+      { ...base, id: "evagd:a", kind: "tarea" as const, effortMinutes: 15 },
+      { ...base, id: "evagd:b", kind: "tarea" as const, effortMinutes: 100 },
+    ];
+    const next = mergeSynced(old, fresh, "evagd");
+    expect(next.find((i) => i.id === "evagd:a")).toMatchObject({ kind: "tarea", effortMinutes: 15 });
+    expect(next.find((i) => i.id === "evagd:b")!.effortMinutes).toBe(40);
   });
 });
