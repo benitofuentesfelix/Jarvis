@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { dueNotifications, localDayKey, startOfLocalDay } from "@jarvis/core";
-import { TZ } from "@/lib/demo";
+import { AGENDA_DEFAULT, TZ } from "@/lib/demo";
 import { applyEvagd, planFor } from "@/lib/engine";
 import { readEvagd } from "@/lib/evagd-server";
 import { sendPush, vapidReady, type StoredSub } from "@/lib/push-server";
@@ -68,6 +68,13 @@ export async function POST(req: Request) {
           sentKeys: new Set(sentKeys),
           sentToday: sentKeys.length,
           doneKeys: new Set(Object.keys(d.feedback ?? {})),
+          agenda:
+            d.agendaReminder === null
+              ? undefined
+              : {
+                  at: d.agendaReminder ?? AGENDA_DEFAULT,
+                  doneToday: d.items.some((i) => i.source === "agenda" && localDayKey(new Date(i.createdAt), TZ) === today),
+                },
         });
         if (msgs.length) {
           const { data: subs } = await db.rpc("jarvis_cron_subs", { t, uid });

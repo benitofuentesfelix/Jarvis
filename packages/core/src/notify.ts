@@ -32,6 +32,8 @@ export interface NotifyInput {
   briefingAt?: string;
   /** Blocks with recorded feedback are not reminded. */
   doneKeys?: Set<string>;
+  /** Weekday reminder to photograph the planner after school; skipped once done that day. */
+  agenda?: { at: string; doneToday: boolean };
 }
 
 const toMin = (hhmm: string) => {
@@ -82,6 +84,21 @@ export function dueNotifications(input: NotifyInput): PushMessage[] {
       url: "/",
       priority: 3,
     });
+  }
+
+  // After school (Mon–Fri): photograph the planner, for up to 3 hours after the set time.
+  if (input.agenda && !input.agenda.doneToday && p.weekday >= 1 && p.weekday <= 5) {
+    const at = toMin(input.agenda.at);
+    const key = `agenda:${today}`;
+    if (minuteOfDay >= at && minuteOfDay < at + 180 && !sentKeys.has(key)) {
+      out.push({
+        key,
+        title: "Foto de la agenda",
+        body: "Hazle una foto a la página de hoy y organizo tu tarde con lo que te han mandado.",
+        url: "/#agenda",
+        priority: 2,
+      });
+    }
   }
 
   // Reminder shortly before each session.

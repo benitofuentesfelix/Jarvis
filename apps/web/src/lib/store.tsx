@@ -20,6 +20,7 @@ import {
 } from "@jarvis/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  AGENDA_DEFAULT,
   TZ,
   defaultSettings,
   demoBusy,
@@ -68,11 +69,14 @@ export interface Persisted {
   live?: { evagd?: { syncedAt: string; count: number; error?: string } };
   /** Example data removed (real account). */
   clean?: boolean;
+  /** Weekday reminder to photograph the planner ("HH:MM"); null = off, absent = AGENDA_DEFAULT. */
+  agendaReminder?: string | null;
   /** Setup steps the student confirmed by hand. */
   setup?: { calendar?: boolean };
 }
 
 const KEY = "jarvis.v2";
+export { AGENDA_DEFAULT };
 
 function seed(now: Date): Persisted {
   const ago = (m: number) => new Date(now.getTime() - m * MINUTE).toISOString();
@@ -143,6 +147,8 @@ export interface Store {
   /** Read EVAGD now (after the link changes). */
   syncEvagd: () => Promise<EvagdResult | null>;
   addItem: (item: Omit<AcademicItem, "id" | "createdAt" | "doneMinutes" | "completed" | "source"> & { source?: AcademicItem["source"] }) => PlanChange[];
+  /** Several items in one go (one plan recalculation), e.g. from the agenda photo. */
+  addItems: (items: (Omit<AcademicItem, "id" | "createdAt" | "doneMinutes" | "completed" | "source"> & { source?: AcademicItem["source"] })[], label: string) => PlanChange[];
   completeItem: (id: string) => void;
   recordOutcome: (block: StudyBlock, outcome: Outcome, quality?: number) => void;
   skipBlock: (block: StudyBlock) => PlanChange[];
@@ -155,6 +161,7 @@ export interface Store {
   setReadOnly: (v: boolean) => void;
   setQuiet: (q: { start: string; end: string }) => void;
   setDailyNotifications: (n: number) => void;
+  setAgendaReminder: (at: string | null) => void;
   log: (agent: Activity["agent"], text: string) => void;
   setWorking: (s: string | null) => void;
   reset: () => void;
@@ -315,6 +322,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }),
           { agent: "Classifier", text: `Nuevo ${item.kind === "examen" ? "examen" : "elemento"}: «${item.title}»` },
         ),
+      addItems: (list, label) =>
+        mutate(
+          (d) => ({
+            ...d,
+            items: [
+              ...d.items,
+              ...list.map((item) => ({
+                ...item,
+                id: newId(item.kind === "examen" ? "ex" : "ta"),
+                source: item.source ?? "manual",
+                createdAt: now.toISOString(),
+                doneMinutes: 0,
+                completed: false,
+              })),
+            ],
+          }),
+          { agent: "Classifier", text: label },
+        ),
       completeItem: (id) =>
         void mutate(
           (d) => ({ ...d, items: d.items.map((i) => (i.id === id ? { ...i, completed: true } : i)) }),
@@ -371,6 +396,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setReadOnly: (v) => setData((d) => (d ? { ...d, readOnly: v } : d)),
       setQuiet: (q) => setData((d) => (d ? { ...d, quiet: q } : d)),
       setDailyNotifications: (n) => setData((d) => (d ? { ...d, dailyNotifications: Math.max(1, Math.min(8, Math.round(n))) } : d)),
+      setAgendaReminder: (at) => setData((d) => (d ? { ...d, agendaReminder: at === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(at) ? at : d.agendaReminder } : d)),
       reset: () => {
         try {
           localStorage.removeItem(KEY);

@@ -230,7 +230,7 @@ function buildUnits(input: PlannerInput, horizon: number): Unit[] {
     const itemTopics = item.topicIds.map((id) => topicById.get(id)).filter(Boolean) as Topic[];
     const mastery = itemTopics.length ? itemTopics.reduce((a, t) => a + t.mastery, 0) / itemTopics.length : 0.5;
     const n = Math.max(1, Math.round(remaining / S));
-    const name = subject?.name ?? "Asignatura";
+    const name = subject?.name ?? "Otros";
 
     if (item.kind === "examen") {
       // Exam prep in phases: understand → practise → mock test → fix errors → light review on the eve.

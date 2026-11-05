@@ -71,7 +71,7 @@ export interface Topic {
 }
 
 export type ItemKind = "examen" | "tarea" | "material" | "aviso";
-export type ItemSource = "evagd" | "notion" | "gcal" | "email" | "manual" | "jarvis";
+export type ItemSource = "evagd" | "notion" | "gcal" | "email" | "manual" | "jarvis" | "agenda";
 
 export interface AcademicItem {
   id: string;

@@ -3,7 +3,7 @@
 import { AlertTriangle, Bell, CalendarPlus, Cloud, Link2, Lock, LogOut, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACTION_POLICY } from "@jarvis/core";
-import { useStore } from "@/lib/store";
+import { AGENDA_DEFAULT, useStore } from "@/lib/store";
 import { Button, Card, Label, Pill } from "@/components/ui";
 import { Skeleton } from "@/components/Skeleton";
 import { signOut } from "@/lib/sync";
@@ -149,6 +149,25 @@ export default function SettingsPage() {
                 Máximo de avisos al día <span className="tabular font-mono text-ink">{data.dailyNotifications}</span>
               </label>
               <input type="range" min={1} max={8} value={data.dailyNotifications} onChange={(e) => store.setDailyNotifications(Number(e.target.value))} className="w-full accent-[var(--color-cyan)]" />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="agenda-at" className="text-[12.5px] text-muted">
+                Recordarme la foto de la agenda (lunes a viernes)
+              </label>
+              <div className="flex items-center gap-2">
+                {data.agendaReminder !== null && (
+                  <input
+                    id="agenda-at"
+                    type="time"
+                    value={data.agendaReminder ?? AGENDA_DEFAULT}
+                    onChange={(e) => e.target.value && store.setAgendaReminder(e.target.value)}
+                    className="rounded-xl border border-line bg-white/[0.03] px-2.5 py-1.5 font-mono text-[13px] text-ink"
+                  />
+                )}
+                <Button onClick={() => store.setAgendaReminder(data.agendaReminder === null ? AGENDA_DEFAULT : null)}>
+                  {data.agendaReminder === null ? "Activar" : "Quitar"}
+                </Button>
+              </div>
             </div>
             <p className="text-[12px] text-faint">
               Horas de silencio: {data.quiet.start} – {data.quiet.end}. Solo las urgencias reales (examen mañana sin preparar) rompen el silencio.

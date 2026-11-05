@@ -49,6 +49,9 @@
 - **Google Calendar personal**: el usuario pidió borrar todos sus eventos; JARVIS no tiene acceso a Google, así que se le dieron los pasos para hacerlo él mismo.
 - **Pendiente (usuario)**: nada obligatorio. Opcional: Site URL y Redirect URL en Supabase Auth.
 
+- **Foto de la agenda (5 nov)**: tarjeta en Hoy («Hacer foto» / «Elegir de la galería»). El móvil reduce la foto (2000 px, JPEG), `/api/agenda` la manda a Claude (`JARVIS_VISION_MODEL`, por defecto `claude-opus-5-5`, salida estructurada) y la foto no se guarda. La IA solo transcribe y dice cómo está escrita cada fecha; el día exacto, los duplicados y los límites de esfuerzo los calcula `packages/core/src/agenda.ts` (con pruebas). El alumno revisa y confirma antes de añadir nada. Máximo 20 fotos cada 24 h (contadas en `job_runs`). Recordatorio de lunes a viernes a las 14:15 (configurable o desactivable en Ajustes → Avisos). **Pendiente:** poner `ANTHROPIC_API_KEY` en Vercel; sin ella la tarjeta dice «Pendiente de activar».
+- **Arreglo (5 nov)**: la portada fallaba con una cuenta real (el panel de Objetivos suponía notas de ejemplo). Reproducido con los datos reales contra un Supabase simulado y corregido.
+
 ## Lo que todavía no existe
 
 - Notion en solo lectura (pendiente: necesita una integración de Notion creada por el usuario). Google Calendar: JARVIS publica un calendario suscrito (enlace .ics), no escribe en el calendario personal.

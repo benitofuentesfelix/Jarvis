@@ -9,3 +9,4 @@ export * from "./methods";
 export * from "./ical";
 export * from "./notify";
 export * from "./icsExport";
+export * from "./agenda";

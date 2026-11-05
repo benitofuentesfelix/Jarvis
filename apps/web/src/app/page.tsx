@@ -11,6 +11,7 @@ import { rotterdamRequirements } from "@/lib/demo";
 import { fmtMinutes, greeting, hm, longDay, minutesBetween, relDays, shortDay, subjectColor } from "@/lib/format";
 import { ChangeList } from "@/components/CommandPalette";
 import { CountUp } from "@/components/ui";
+import { AgendaScan } from "@/components/AgendaScan";
 import { Setup } from "@/components/Setup";
 import { Skeleton } from "@/components/Skeleton";
 import { useFocus } from "@/components/Focus";
@@ -49,6 +50,8 @@ export default function Today() {
             : `${pending === 1 ? "Te queda 1 sesión" : `Te quedan ${pending} sesiones`} hoy. Yo me encargo del orden; tú solo dale a empezar.`}
         </p>
       </motion.header>
+
+      <AgendaScan />
 
       <Setup />
 

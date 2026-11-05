@@ -16,6 +16,8 @@ import {
 } from "@jarvis/core";
 
 export const TZ = "Atlantic/Canary";
+/** Weekday reminder to photograph the planner: Canary secondary schools end around 14:00. */
+export const AGENDA_DEFAULT = "14:15";
 
 export const defaultSettings: PlannerSettings = {
   timezone: TZ,

@@ -55,4 +55,14 @@ describe("notificaciones", () => {
     expect(base(at, { doneKeys: new Set([`b1@${block("b1", 16, 0).start}`]) })).toEqual([]);
     expect(base(at, { sentToday: 3 })).toEqual([]);
   });
+  it("recuerda la foto de la agenda al salir del cole, solo entre semana y si no está hecha", () => {
+    const agenda = { at: "14:15", doneToday: false };
+    const keys = (at: Date, a = agenda) => base(at, { agenda: a, blocks: [] }).map((m) => m.key);
+    expect(keys(zoned(2026, 11, 4, 14, 10, TZ))).not.toContain("agenda:2026-11-04");
+    expect(keys(zoned(2026, 11, 4, 14, 20, TZ))).toContain("agenda:2026-11-04");
+    expect(keys(zoned(2026, 11, 4, 17, 20, TZ))).not.toContain("agenda:2026-11-04"); // pasadas 3 h
+    expect(keys(zoned(2026, 11, 4, 14, 20, TZ), { at: "14:15", doneToday: true })).toEqual([]);
+    expect(keys(zoned(2026, 11, 7, 14, 20, TZ))).toEqual([]); // sábado
+    expect(base(zoned(2026, 11, 4, 14, 20, TZ), { agenda, blocks: [], sentKeys: new Set(["agenda:2026-11-04"]) })).toEqual([]);
+  });
 });
