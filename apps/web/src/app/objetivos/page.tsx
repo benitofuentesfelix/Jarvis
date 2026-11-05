@@ -104,7 +104,7 @@ export default function GoalsPage() {
                     </div>
                   ))}
                   {g.area === "universidad" && <RotterdamReqs />}
-                  {g.area === "cambridge" && <CambridgeBreakdown />}
+                  {g.area === "cambridge" && !store.data.clean && <CambridgeBreakdown />}
                 </div>
               </motion.div>
             </Card>

@@ -160,16 +160,18 @@ export function runLocalCommand(raw: string, store: Store): CommandResult {
   // 3. Cambridge status
   if (/cambridge|\bc1\b/.test(t) || (/ingles/.test(t) && /como voy|progreso|nivel/.test(t))) {
     steps.push("Consultando objetivo Cambridge", "Revisando sesiones de la semana");
-    const g = store.goals.find((x) => x.area === "cambridge")!;
-    const m = g.metrics[0]!;
+    const g = store.goals.find((x) => x.area === "cambridge");
+    const m = g?.metrics[0];
     const week = plan.blocks.filter((b) => b.kind === "cambridge" && Date.parse(b.start) < now.getTime() + 7 * 86_400_000);
     const mins = week.reduce((a, b) => a + (Date.parse(b.end) - Date.parse(b.start)) / MINUTE, 0);
     return {
       mode: "local",
       steps,
-      text: `Cambridge C1: estimación actual **${m.current}** en la escala (objetivo ${m.target}; Rotterdam pide 170). Has subido ${
-        m.current - m.history[0]!.value
-      } puntos en 6 meses. Esta semana tienes ${week.length} sesiones (${Math.round(mins)} de ${data.settings.cambridgeWeeklyMinutes} min). Siguiente: ${
+      text: `${
+        m
+          ? `Cambridge C1: estimación actual **${m.current}** en la escala (objetivo ${m.target}; Rotterdam pide 170). Has subido ${m.current - (m.history[0]?.value ?? m.current)} puntos en 6 meses.`
+          : "Cambridge C1: aún no hay notas de simulacros, así que no invento una estimación (Rotterdam pide 170 en cada destreza)."
+      } Esta semana tienes ${week.length} sesiones (${Math.round(mins)} de ${data.settings.cambridgeWeeklyMinutes} min). Siguiente: ${
         week[0] ? `${week[0].title.replace("Cambridge C1 · ", "")} el ${shortDay(week[0].start)} a las ${hm(week[0].start)}` : "sin sesiones, los exámenes ocupan los huecos"
       }.`,
     };

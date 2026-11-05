@@ -483,14 +483,16 @@ function Signals() {
 
 function Goals() {
   const store = useStore()!;
-  const academic = store.goals.find((g) => g.area === "academico")!;
-  const cambridge = store.goals.find((g) => g.area === "cambridge")!;
+  const academic = store.goals.find((g) => g.area === "academico");
+  const cambridge = store.goals.find((g) => g.area === "cambridge");
   const reqs = rotterdamRequirements.filter((r) => r.state === "cumplido" || r.state === "en_camino").length;
+  // A real account has no grades yet: show the target and a dash, never invented numbers.
+  const metric = (m: { current: number; target: number } | undefined, target: number) => ({ value: m ? m.current : null, target: m?.target ?? target });
   const items = [
-    { label: "Nota media", value: academic.metrics[0]!.current, target: academic.metrics[0]!.target, d: 2, color: "var(--color-c1)" },
-    { label: "Matemáticas", value: academic.metrics[1]!.current, target: academic.metrics[1]!.target, d: 1, color: "var(--color-c2)" },
-    { label: "Cambridge", value: cambridge.metrics[0]!.current, target: cambridge.metrics[0]!.target, d: 0, color: "var(--color-c6)" },
-    { label: "Rotterdam", value: reqs, target: rotterdamRequirements.length, d: 0, color: "var(--color-indigo)" },
+    { label: "Nota media", ...metric(academic?.metrics[0], 9.2), d: 2, color: "var(--color-c1)" },
+    { label: "Matemáticas", ...metric(academic?.metrics[1], 8.5), d: 1, color: "var(--color-c2)" },
+    { label: "Cambridge", ...metric(cambridge?.metrics[0], 185), d: 0, color: "var(--color-c6)" },
+    { label: "Rotterdam", value: store.data.clean ? null : reqs, target: rotterdamRequirements.length, d: 0, color: "var(--color-indigo)" },
   ];
   return (
     <section>
@@ -506,12 +508,12 @@ function Goals() {
             <p className="text-[12px] text-faint">{g.label}</p>
             <p className="mt-1.5 flex items-baseline gap-1.5">
               <span className="text-[28px] font-light leading-none tracking-tight text-ink">
-                <CountUp value={g.value} decimals={g.d} />
+                {g.value === null ? "—" : <CountUp value={g.value} decimals={g.d} />}
               </span>
               <span className="tabular text-[12px] text-faint">/ {g.target.toLocaleString("es-ES")}</span>
             </p>
             <div className="mt-3 h-[2px] w-full max-w-[140px] overflow-hidden rounded-full bg-white/[0.06]">
-              <motion.div className="h-full rounded-full" style={{ background: g.color, boxShadow: `0 0 8px ${g.color}` }} initial={{ width: 0 }} animate={{ width: `${Math.min(1, g.value / g.target) * 100}%` }} transition={{ duration: 1.1, ease, delay: 0.1 * i }} />
+              <motion.div className="h-full rounded-full" style={{ background: g.color, boxShadow: `0 0 8px ${g.color}` }} initial={{ width: 0 }} animate={{ width: `${g.value === null ? 0 : Math.min(1, g.value / g.target) * 100}%` }} transition={{ duration: 1.1, ease, delay: 0.1 * i }} />
             </div>
           </div>
         ))}
