@@ -31,7 +31,7 @@ import {
   type MemoryItem,
 } from "./demo";
 import { useCloudSync, type SyncState } from "./sync";
-import { applyEvagd, newId, planFor, type EvagdResult } from "./engine";
+import { applyEvagd, cleanStart, newId, planFor, type EvagdResult } from "./engine";
 
 export type { Outcome };
 
@@ -66,6 +66,10 @@ export interface Persisted {
   dailyNotifications: number;
   /** Real connections. Absent = example data. */
   live?: { evagd?: { syncedAt: string; count: number; error?: string } };
+  /** Example data removed (real account). */
+  clean?: boolean;
+  /** Setup steps the student confirmed by hand. */
+  setup?: { calendar?: boolean };
 }
 
 const KEY = "jarvis.v2";
@@ -134,6 +138,8 @@ export interface Store {
   busyFor: (days: number) => BusyEvent[];
   /** Where the state lives: this device only, or mirrored to the cloud. */
   sync: SyncState;
+  /** Mark a setup step as done. */
+  setSetup: (p: NonNullable<Persisted["setup"]>) => void;
   /** Read EVAGD now (after the link changes). */
   syncEvagd: () => Promise<EvagdResult | null>;
   addItem: (item: Omit<AcademicItem, "id" | "createdAt" | "doneMinutes" | "completed" | "source"> & { source?: AcademicItem["source"] }) => PlanChange[];
@@ -148,6 +154,7 @@ export interface Store {
   deleteMemory: (id: string) => void;
   setReadOnly: (v: boolean) => void;
   setQuiet: (q: { start: string; end: string }) => void;
+  setDailyNotifications: (n: number) => void;
   log: (agent: Activity["agent"], text: string) => void;
   setWorking: (s: string | null) => void;
   reset: () => void;
@@ -161,6 +168,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [lastChanges, setLastChanges] = useState<PlanChange[]>([]);
   const [working, setWorking] = useState<string | null>(null);
   const sync = useCloudSync(data, setData);
+  // A real account never shows example data.
+  useEffect(() => {
+    if (sync.mode === "cloud" && sync.status === "ok" && data && !data.clean) setData(cleanStart(data, new Date()));
+  }, [sync.mode, sync.status, data]);
 
   useEffect(() => {
     if (now && !data) setData(load(now));
@@ -268,13 +279,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       plan: { ...plan, findings: plan.findings.filter((f) => !data.dismissed.includes(f.id)) },
       todayBlocks,
       briefing,
-      goals: demoGoals(now),
+      // With a real account, no invented grades: goals keep their milestones, metrics start empty.
+      goals: data.clean
+        ? demoGoals(now).map((g) => ({
+            ...g,
+            metrics: [],
+            status: "activo" as const,
+            projects: g.projects.map((p) => ({ ...p, milestones: p.milestones.map((ms) => ({ ...ms, done: false })) })),
+          }))
+        : demoGoals(now),
       lastChanges,
       working,
-      live: !!data.live,
-      busyFor: (days) => [...demoBusy(now, days, !!data.live), ...data.skips],
+      live: !!data.live?.evagd?.syncedAt,
+      busyFor: (days) => [...demoBusy(now, days, !!(data.clean || data.live)), ...data.skips],
       sync,
       syncEvagd,
+      setSetup: (p) => setData((d) => (d ? { ...d, setup: { ...d.setup, ...p } } : d)),
       setWorking,
       log,
       addItem: (item) =>
@@ -350,6 +370,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteMemory: (id) => setData((d) => (d ? { ...d, memories: d.memories.filter((m) => m.id !== id) } : d)),
       setReadOnly: (v) => setData((d) => (d ? { ...d, readOnly: v } : d)),
       setQuiet: (q) => setData((d) => (d ? { ...d, quiet: q } : d)),
+      setDailyNotifications: (n) => setData((d) => (d ? { ...d, dailyNotifications: Math.max(1, Math.min(8, Math.round(n))) } : d)),
       reset: () => {
         try {
           localStorage.removeItem(KEY);

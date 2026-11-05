@@ -16,7 +16,7 @@ export function planFor(d: Persisted, at: Date): Plan {
     subjects,
     topics: d.topics,
     items: d.items,
-    busy: [...demoBusy(at, 14, !!d.live), ...d.skips],
+    busy: [...demoBusy(at, 14, !!(d.clean || d.live)), ...d.skips],
     settings: d.settings,
     pace: paceFromOutcomes(
       Object.values(d.feedback).flatMap((f) => (f.subjectId ? [{ subjectId: f.subjectId, outcome: f.outcome, at: f.at }] : [])),
@@ -38,7 +38,7 @@ export function applyEvagd(d: Persisted, body: EvagdResult): Persisted {
   if (!body.ok || !body.items) {
     return { ...d, live: { ...d.live, evagd: { syncedAt: d.live?.evagd?.syncedAt ?? "", count: d.live?.evagd?.count ?? 0, error: body.error } } };
   }
-  const first = !d.live;
+  const first = !d.live?.evagd?.syncedAt;
   const base = first ? d.items.filter((i) => i.source === "manual" && !DEMO_IDS.has(i.id)) : d.items;
   const before = new Set(base.map((i) => i.id));
   const items = mergeSynced(base, body.items, "evagd");
@@ -58,5 +58,24 @@ export function applyEvagd(d: Persisted, body: EvagdResult): Persisted {
     memories: first ? d.memories.filter((m) => !m.id.startsWith("mem-")) : d.memories,
     activity: first ? notes : [...notes, ...d.activity].slice(0, 60),
     live: { ...d.live, evagd: { syncedAt: at, count: body.items.length } },
+  };
+}
+
+/**
+ * First session with a real account: the example data goes away for good and only the
+ * student's own information stays (items they added by hand, real EVAGD items, settings).
+ */
+export function cleanStart(d: Persisted, at: Date): Persisted {
+  if (d.clean) return d;
+  return {
+    ...d,
+    clean: true,
+    items: d.items.filter((i) => !DEMO_IDS.has(i.id)),
+    topics: d.live?.evagd ? d.topics : [],
+    memories: d.memories.filter((m) => !m.id.startsWith("mem-")),
+    feedback: {},
+    skips: [],
+    day: { key: "", blocks: [] },
+    activity: [{ id: newId("act"), at: at.toISOString(), agent: "Core", text: "Datos de ejemplo eliminados. A partir de ahora solo verás lo tuyo." }],
   };
 }

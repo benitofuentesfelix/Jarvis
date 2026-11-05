@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Bell, Cloud, Link2, Lock, LogOut, RotateCcw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Bell, CalendarPlus, Cloud, Link2, Lock, LogOut, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACTION_POLICY } from "@jarvis/core";
 import { useStore } from "@/lib/store";
@@ -8,6 +8,7 @@ import { Button, Card, Label, Pill } from "@/components/ui";
 import { Skeleton } from "@/components/Skeleton";
 import { signOut } from "@/lib/sync";
 import { EvagdLink } from "@/components/EvagdLink";
+import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 import { ago } from "@/lib/format";
 
 const INTEGRATIONS = [
@@ -97,7 +98,19 @@ export default function SettingsPage() {
         )}
       </Card>
 
-      {store.sync.mode === "cloud" && <EvagdLink />}
+      {store.sync.mode === "cloud" && (
+        <div id="evagd" className="scroll-mt-20">
+          <EvagdLink />
+        </div>
+      )}
+
+      {store.sync.mode === "cloud" && (
+        <Card>
+          <Label right={<CalendarPlus className="size-4 text-faint" />}>Calendario del móvil</Label>
+          <p className="mb-3 text-[13px] leading-relaxed text-muted">Tus sesiones de estudio, exámenes y entregas, siempre al día en el calendario del iPhone o en Google Calendar.</p>
+          <CalendarSubscribe />
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
@@ -118,6 +131,7 @@ export default function SettingsPage() {
           </p>
         </Card>
 
+        <div id="avisos" className="scroll-mt-20">
         <Card>
           <Label right={<Bell className="size-4 text-faint" />}>Notificaciones</Label>
           <p className="text-[13px] leading-relaxed text-muted">
@@ -134,13 +148,14 @@ export default function SettingsPage() {
               <label className="mb-1.5 flex items-center justify-between text-[12.5px] text-muted">
                 Máximo de avisos al día <span className="tabular font-mono text-ink">{data.dailyNotifications}</span>
               </label>
-              <input type="range" min={1} max={8} value={data.dailyNotifications} onChange={() => {}} className="w-full accent-[var(--color-cyan)]" readOnly />
+              <input type="range" min={1} max={8} value={data.dailyNotifications} onChange={(e) => store.setDailyNotifications(Number(e.target.value))} className="w-full accent-[var(--color-cyan)]" />
             </div>
             <p className="text-[12px] text-faint">
               Horas de silencio: {data.quiet.start} – {data.quiet.end}. Solo las urgencias reales (examen mañana sin preparar) rompen el silencio.
             </p>
           </div>
         </Card>
+        </div>
       </div>
 
       <Card>
@@ -204,9 +219,9 @@ export default function SettingsPage() {
           </div>
         </div>
         <div className="mt-5 flex items-center justify-between border-t hairline pt-4">
-          <p className="text-[12px] text-faint">Volver a los datos de ejemplo originales</p>
-          <Button onClick={() => confirm("Esto borra tus datos de JARVIS y vuelve a los de ejemplo. ¿Seguro?") && store.reset()}>
-            <RotateCcw className="size-4" /> Reiniciar demo
+          <p className="text-[12px] text-faint">{store.sync.mode === "cloud" ? "Borrar todo lo guardado en JARVIS y empezar de cero" : "Volver a los datos de ejemplo originales"}</p>
+          <Button onClick={() => confirm("Esto borra tus datos de JARVIS (EVAGD se volverá a leer solo). ¿Seguro?") && store.reset()}>
+            <RotateCcw className="size-4" /> {store.sync.mode === "cloud" ? "Empezar de cero" : "Reiniciar demo"}
           </Button>
         </div>
       </Card>

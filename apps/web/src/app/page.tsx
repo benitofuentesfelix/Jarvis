@@ -11,6 +11,7 @@ import { rotterdamRequirements } from "@/lib/demo";
 import { fmtMinutes, greeting, hm, longDay, minutesBetween, relDays, shortDay, subjectColor } from "@/lib/format";
 import { ChangeList } from "@/components/CommandPalette";
 import { CountUp } from "@/components/ui";
+import { Setup } from "@/components/Setup";
 import { Skeleton } from "@/components/Skeleton";
 import { useFocus } from "@/components/Focus";
 
@@ -34,7 +35,11 @@ export default function Today() {
           <p className="micro">{longDay(now)}</p>
           <p className="flex items-center gap-1.5 font-mono text-[10.5px] text-faint">
             <span className="size-1.5 rounded-full bg-cyan" style={{ animation: "pulse-dot 2.4s infinite" }} />
-            {store.live ? `EVAGD conectado${store.data.live?.evagd?.error ? " · error al sincronizar" : ""}` : "datos de ejemplo · sin cuentas conectadas"}
+            {store.live
+              ? `EVAGD conectado${store.data.live?.evagd?.error ? " · error al sincronizar" : ""}`
+              : store.data.clean
+                ? "EVAGD sin conectar"
+                : "datos de ejemplo · sin cuentas conectadas"}
           </p>
         </div>
         <h1 className="glow-text mt-2 text-[30px] font-light leading-[1.05] tracking-[-0.02em] sm:text-[44px]">{greeting(now)}.</h1>
@@ -44,6 +49,8 @@ export default function Today() {
             : `${pending === 1 ? "Te queda 1 sesión" : `Te quedan ${pending} sesiones`} hoy. Yo me encargo del orden; tú solo dale a empezar.`}
         </p>
       </motion.header>
+
+      <Setup />
 
       <AnimatePresence>
         {lastChanges.length > 0 && (
@@ -215,10 +222,16 @@ function StepRing({ block, progress, color }: { block: StudyBlock; progress: num
 }
 
 function EmptyHero() {
+  const store = useStore()!;
+  const waiting = store.data.clean && !store.live;
   return (
     <section className="glass p-8 text-center">
-      <p className="text-[20px] font-light text-ink">Nada pendiente en el horizonte.</p>
-      <p className="mt-2 text-[13.5px] text-faint">Cuando aparezca un examen o una tarea, lo verás aquí con su plan.</p>
+      <p className="text-[20px] font-light text-ink">{waiting ? "Aún no hay nada que estudiar." : "Nada pendiente en el horizonte."}</p>
+      <p className="mt-2 text-[13.5px] text-faint">
+        {waiting
+          ? "Conecta EVAGD y tus exámenes y entregas aparecerán aquí con su plan. También puedes añadirlos desde el centro de comandos (botón central)."
+          : "Cuando aparezca un examen o una tarea, lo verás aquí con su plan."}
+      </p>
     </section>
   );
 }

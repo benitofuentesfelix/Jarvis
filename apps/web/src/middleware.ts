@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_KEY, SUPABASE_URL, cloudEnabled } from "@/lib/supabase/config";
 
-const PUBLIC = ["/entrar", "/auth/"];
+const PUBLIC = ["/entrar", "/auth/", "/api/calendario/"];
 
 /**
  * With Supabase configured, every page and API route needs a session.

@@ -43,7 +43,10 @@
 - **GitHub**: código en `benitofuentesfelix/Jarvis` (rama `main`).
 - **Vercel** (Hobby, región dub1): proyecto `jarvis`, producción en https://jarvis-sandy-eight-87.vercel.app. Variables públicas y de avisos puestas; `SUPABASE_SECRET_KEY` y `EVAGD_ICAL_URL` las añade el usuario en el panel.
 - **Sin claves en Vercel (5 nov)**: el trabajo 24/7 ya no usa la clave secreta de Supabase; llama a funciones `jarvis_cron_*` (0004) que exigen el token de pg_cron. El enlace de EVAGD se pega en Ajustes y se guarda cifrado en Vault (`jarvis_set_evagd_url`); el servidor lo lee con la sesión del usuario o con el token.
-- **Pendiente (usuario)**: pegar `supabase-paso2.sql` (0004). Opcional: Site URL y Redirect URL en Supabase Auth.
+- **Cuenta real (5 nov)**: el usuario creó su acceso; los datos de ejemplo se borran solos en la primera sesión con cuenta (`cleanStart`), y Objetivos deja de mostrar notas inventadas. Tarjeta «Para que JARVIS funcione solo» en Hoy (EVAGD, calendario, pantalla de inicio, avisos).
+- **Calendario suscrito** (0005 + `/api/calendario/<token>.ics`): sesiones, exámenes y entregas en el calendario del iPhone o de Google; solo lectura, token privado por usuario, `buildIcs` en core con pruebas.
+- **Google Calendar personal**: el usuario pidió borrar todos sus eventos; JARVIS no tiene acceso a Google, así que se le dieron los pasos para hacerlo él mismo.
+- **Pendiente (usuario)**: nada obligatorio. Opcional: Site URL y Redirect URL en Supabase Auth.
 
 ## Lo que todavía no existe
 

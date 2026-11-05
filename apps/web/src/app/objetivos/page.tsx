@@ -35,7 +35,10 @@ export default function GoalsPage() {
     <div className="space-y-7">
       <header>
         <h1 className="glow-text text-[32px] font-light leading-tight tracking-[-0.02em] sm:text-[38px]">Objetivos</h1>
-        <p className="mt-1.5 text-[14px] text-muted">Objetivo → proyecto → hito → tarea. JARVIS convierte cada objetivo en acciones del día.</p>
+        <p className="mt-1.5 text-[14px] text-muted">
+          Objetivo → proyecto → hito → tarea. JARVIS convierte cada objetivo en acciones del día.
+          {store.data.clean && " Las cifras aparecerán cuando JARVIS tenga tus notas reales."}
+        </p>
       </header>
 
       <div className="space-y-4">
@@ -49,7 +52,7 @@ export default function GoalsPage() {
             <Card key={g.id} delay={i * 0.04} className="!p-0 overflow-hidden">
               <button onClick={() => setOpen(isOpen ? null : g.id)} className="flex w-full items-center gap-4 p-5 text-left">
                 <Ring value={pct} size={58} stroke={4.5} color={color}>
-                  <span className="tabular font-mono text-[12px] text-ink">{Math.round(pct * 100)}%</span>
+                  <span className="tabular font-mono text-[12px] text-ink">{m ? `${Math.round(pct * 100)}%` : "—"}</span>
                 </Ring>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
