@@ -5,11 +5,11 @@ import type { EvagdResult } from "./engine";
 
 /**
  * Reads the student's EVAGD calendar export. The URL carries a private token, so it lives
- * only in the server environment (EVAGD_ICAL_URL) and never reaches the browser.
+ * only in Supabase Vault (or the server variable EVAGD_ICAL_URL) and is read only on the server.
  * Read-only by nature: Moodle's export cannot change anything in EVAGD.
  */
-function feedUrl(): URL | null {
-  const raw = process.env.EVAGD_ICAL_URL?.trim();
+function feedUrl(rawUrl?: string | null): URL | null {
+  const raw = (rawUrl ?? process.env.EVAGD_ICAL_URL)?.trim();
   if (!raw) return null;
   try {
     const url = new URL(raw.replace(/&amp;/g, "&"));
@@ -22,8 +22,9 @@ function feedUrl(): URL | null {
   }
 }
 
-export async function readEvagd(now = new Date()): Promise<EvagdResult> {
-  const url = feedUrl();
+/** `rawUrl` comes from the user's Vault secret; without it, the server variable is used. */
+export async function readEvagd(now = new Date(), rawUrl?: string | null): Promise<EvagdResult> {
+  const url = feedUrl(rawUrl);
   if (!url) return { configured: false };
   try {
     const res = await fetch(url, { cache: "no-store", headers: { "User-Agent": "JARVIS/1.0 (calendario personal)" }, signal: AbortSignal.timeout(15_000) });

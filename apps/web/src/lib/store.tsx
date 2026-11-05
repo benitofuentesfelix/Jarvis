@@ -134,6 +134,8 @@ export interface Store {
   busyFor: (days: number) => BusyEvent[];
   /** Where the state lives: this device only, or mirrored to the cloud. */
   sync: SyncState;
+  /** Read EVAGD now (after the link changes). */
+  syncEvagd: () => Promise<EvagdResult | null>;
   addItem: (item: Omit<AcademicItem, "id" | "createdAt" | "doneMinutes" | "completed" | "source"> & { source?: AcademicItem["source"] }) => PlanChange[];
   completeItem: (id: string) => void;
   recordOutcome: (block: StudyBlock, outcome: Outcome, quality?: number) => void;
@@ -236,27 +238,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   // EVAGD sync: on load and every 30 minutes. The server holds the private feed URL.
+  const syncEvagd = useCallback(async (): Promise<EvagdResult | null> => {
+    if (location.pathname.startsWith("/entrar")) return null; // no session yet
+    try {
+      const res = await fetch("/api/evagd", { cache: "no-store" });
+      const body = (await res.json()) as EvagdResult;
+      if (body.configured) setData((d) => (d ? applyEvagd(d, body) : d));
+      return body;
+    } catch {
+      return null; // offline: try again next round
+    }
+  }, []);
   const loaded = !!data;
   useEffect(() => {
     if (!loaded) return;
-    let stop = false;
-    const run = async () => {
-      try {
-        const res = await fetch("/api/evagd", { cache: "no-store" });
-        const body = (await res.json()) as EvagdResult;
-        if (stop || !body.configured) return;
-        setData((d) => (d ? applyEvagd(d, body) : d));
-      } catch {
-        /* offline: try again next round */
-      }
-    };
-    void run();
-    const t = setInterval(run, 30 * 60_000);
-    return () => {
-      stop = true;
-      clearInterval(t);
-    };
-  }, [loaded]);
+    void syncEvagd();
+    const t = setInterval(() => void syncEvagd(), 30 * 60_000);
+    return () => clearInterval(t);
+  }, [loaded, syncEvagd]);
 
   const store = useMemo<Store | null>(() => {
     if (!data || !now || !plan) return null;
@@ -275,6 +274,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       live: !!data.live,
       busyFor: (days) => [...demoBusy(now, days, !!data.live), ...data.skips],
       sync,
+      syncEvagd,
       setWorking,
       log,
       addItem: (item) =>
@@ -360,7 +360,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setLastChanges([]);
       },
     };
-  }, [data, now, plan, todayBlocks, lastChanges, working, mutate, log, sync]);
+  }, [data, now, plan, todayBlocks, lastChanges, working, mutate, log, sync, syncEvagd]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

@@ -37,12 +37,13 @@
 ## Fase 2 en curso (4 nov 2026)
 
 - **Supabase** (plan gratis, región eu-west-1): proyecto `jarvis` creado. Migraciones en `packages/db/migrations`: 0001 (esquema con RLS solo para usuarios autenticados), 0002 (estado de la app, copias, lista de correos permitidos, aviso único), 0003 (pg_cron cada 5 min). Aplicadas el 5 nov por el usuario desde el editor SQL (27 tablas, reloj `jarvis-tick` activo).
-- **Acceso privado**: `/entrar` con código de un solo uso por correo (sin contraseñas). El middleware exige sesión en todas las páginas y en la API. Solo pueden crear cuenta los correos de `allowed_emails` (se rellena desde el panel, nunca desde el código). Sin variables de Supabase la app sigue en modo local.
+- **Acceso privado**: `/entrar` con correo y contraseña (Supabase guarda solo el hash). Primera vez: «crear acceso» y confirmar el correo. El middleware exige sesión en todas las páginas y en la API. Solo pueden crear cuenta los correos de `allowed_emails` (se rellena desde el panel, nunca desde el código). Sin variables de Supabase la app sigue en modo local.
 - **Sincronización**: el estado se guarda primero en el dispositivo y se refleja en `app_state`; gana el cambio más reciente. Se vuelve a leer al abrir la app y cada 5 min.
 - **Trabajo 24/7** (`/api/cron/tick`, protegido con un token que genera Postgres y nunca sale de la base de datos; el servidor lo comprueba con `jarvis_cron_token_ok()`): lee EVAGD cada 30 min, avisa 15 min antes de cada sesión, resumen al acabar las horas de silencio, máximo diario y horas de silencio respetados (`packages/core/src/notify.ts`, con pruebas), copia semanal (se guardan 8).
 - **GitHub**: código en `benitofuentesfelix/Jarvis` (rama `main`).
 - **Vercel** (Hobby, región dub1): proyecto `jarvis`, producción en https://jarvis-sandy-eight-87.vercel.app. Variables públicas y de avisos puestas; `SUPABASE_SECRET_KEY` y `EVAGD_ICAL_URL` las añade el usuario en el panel.
-- **Pendiente (usuario)**: Site URL y Redirect URL en Supabase Auth, `{{ .Token }}` en las plantillas de correo, las dos variables privadas en Vercel.
+- **Sin claves en Vercel (5 nov)**: el trabajo 24/7 ya no usa la clave secreta de Supabase; llama a funciones `jarvis_cron_*` (0004) que exigen el token de pg_cron. El enlace de EVAGD se pega en Ajustes y se guarda cifrado en Vault (`jarvis_set_evagd_url`); el servidor lo lee con la sesión del usuario o con el token.
+- **Pendiente (usuario)**: pegar `supabase-paso2.sql` (0004). Opcional: Site URL y Redirect URL en Supabase Auth.
 
 ## Lo que todavía no existe
 

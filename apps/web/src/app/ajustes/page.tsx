@@ -7,12 +7,13 @@ import { useStore } from "@/lib/store";
 import { Button, Card, Label, Pill } from "@/components/ui";
 import { Skeleton } from "@/components/Skeleton";
 import { signOut } from "@/lib/sync";
+import { EvagdLink } from "@/components/EvagdLink";
 import { ago } from "@/lib/format";
 
 const INTEGRATIONS = [
   { id: "google", name: "Google Calendar", detail: "Calendario «JARVIS» propio + lectura de tu agenda personal", status: "pendiente" },
   { id: "notion", name: "Notion", detail: "Solo lectura al principio: analizar sin tocar tu organización", status: "pendiente" },
-  { id: "evagd", name: "EVAGD", detail: "Calendario iCal + avisos por correo (sin contraseñas)", status: "por verificar" },
+  { id: "evagd", name: "EVAGD", detail: "Calendario iCal, solo lectura y sin contraseñas", status: "sin conectar" },
   { id: "push", name: "Notificaciones", detail: "Web Push: funciona con el móvil cerrado", status: "listo para activar" },
 ];
 
@@ -96,17 +97,19 @@ export default function SettingsPage() {
         )}
       </Card>
 
+      {store.sync.mode === "cloud" && <EvagdLink />}
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <Label right={<Link2 className="size-4 text-faint" />}>Integraciones</Label>
           <div className="space-y-3">
-            {INTEGRATIONS.map((i) => (
+            {INTEGRATIONS.map((i) => (i.id === "evagd" && data.live?.evagd ? { ...i, status: data.live.evagd.error ? "con errores" : "conectado" } : i)).map((i) => (
               <div key={i.id} className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-[13.5px] text-ink">{i.name}</p>
                   <p className="text-[12px] leading-relaxed text-muted">{i.detail}</p>
                 </div>
-                <Pill tone={i.status === "listo para activar" ? "cyan" : "neutral"}>{i.status}</Pill>
+                <Pill tone={i.status === "conectado" ? "good" : i.status === "con errores" ? "bad" : i.status === "listo para activar" ? "cyan" : "neutral"}>{i.status}</Pill>
               </div>
             ))}
           </div>
